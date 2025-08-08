@@ -372,24 +372,35 @@ class WebAdvancedFutureChat:
     
     def generate_smart_response(self, user_input):
         """🧠 Генерация умного ответа с использованием продвинутой NLP системы"""
+        
         # 1. Продвинутый анализ намерений с эмоциями
         intent, emotion = self.enhanced_intent_analysis(user_input)
         
         # 2. Специальная обработка для разных типов запросов
         if intent == 'story_request':
-            return self.save_to_history(user_input, self.generate_story_response(user_input), f"Генератор историй ({emotion})")
+            response = self.generate_story_response(user_input)
+            return self.save_to_history(user_input, response, f"Генератор историй ({emotion})")
         
         if intent == 'explanation_request':
             topic = self.extract_explanation_topic(user_input)
-            return self.save_to_history(user_input, self.generate_explanation_response(user_input, topic), f"Система объяснений ({emotion})")
+            response = self.generate_explanation_response(user_input, topic)
+            return self.save_to_history(user_input, response, f"Система объяснений ({emotion})")
         
         if intent == 'advice_request':
-            return self.save_to_history(user_input, self.generate_advice_response(user_input), f"Система советов ({emotion})")
+            response = self.generate_advice_response(user_input)
+            return self.save_to_history(user_input, response, f"Система советов ({emotion})")
         
         if intent == 'creative_request':
-            return self.save_to_history(user_input, self.generate_creative_response(user_input), f"Творческая система ({emotion})")
+            response = self.generate_creative_response(user_input)
+            return self.save_to_history(user_input, response, f"Творческая система ({emotion})")
             
-        # 3. Анализируем контекст последних сообщений
+        # 3. Для вопросов типа "объясни" - не используем контекст, а идем прямо к объяснению
+        if 'объясни' in user_input.lower() or 'что такое' in user_input.lower():
+            topic = self.extract_explanation_topic(user_input)
+            response = self.generate_explanation_response(user_input, topic)
+            return self.save_to_history(user_input, response, f"Система объяснений (принудительно)")
+            
+        # 4. Анализируем контекст последних сообщений (только для других запросов)
         context_response = self.analyze_conversation_context(user_input)
         if context_response:
             enhanced_context = self.apply_chatgpt_response_templates(
@@ -397,27 +408,27 @@ class WebAdvancedFutureChat:
             )
             return self.save_to_history(user_input, enhanced_context, f"Контекстный анализ ({intent}, {emotion})")
         
-        # 4. Получаем ответы от разных источников
+        # 5. Получаем ответы от разных источников
         chatbot_response, chatbot_confidence = self.get_chatbot_response(user_input)
         fallback_response, fallback_confidence = self.get_fallback_response(user_input)
         
-        # 5. Определяем уровень уверенности
+        # 6. Определяем уровень уверенности
         confidence_level = self.determine_confidence_level(chatbot_confidence, fallback_confidence, intent)
         
-        # 6. Выбираем лучший ответ на основе намерения и уверенности
+        # 7. Выбираем лучший ответ на основе намерения и уверенности
         response, source = self.select_best_response(
             chatbot_response, chatbot_confidence,
             fallback_response, fallback_confidence,
             intent, user_input
         )
         
-        # 7. Применяем продвинутые шаблоны ChatGPT с учетом эмоций
+        # 8. Применяем продвинутые шаблоны ChatGPT с учетом эмоций
         if response:
             response = self.apply_chatgpt_response_templates(
                 response, user_input, intent, confidence_level, emotion
             )
         
-        # 8. Сохраняем в историю с полными метаданными
+        # 9. Сохраняем в историю с полными метаданными
         return self.save_to_history(user_input, response, f"{source} (Intent: {intent}, Emotion: {emotion}, Confidence: {confidence_level})")
     
     def extract_explanation_topic(self, user_input):
@@ -811,7 +822,7 @@ class WebAdvancedFutureChat:
                 'weight': 1.2
             },
             'explanation_request': {
-                'patterns': ['объясни', 'поясни', 'как работает', 'в чем суть', 'что означает', 'разъясни'],
+                'patterns': ['объясни', 'поясни', 'как работает', 'в чем суть', 'что означает', 'разъясни', 'что такое', 'как устроено', 'простыми словами'],
                 'weight': 1.1
             },
             'teaching': {
